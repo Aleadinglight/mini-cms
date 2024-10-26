@@ -1,6 +1,3 @@
-// app/api/collections/route.ts and [name]/route.ts stay the same as we created before
-
-// app/actions.ts
 'use server'
 
 export async function saveLink(collector: string, link: string) {

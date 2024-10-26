@@ -13,15 +13,20 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Clipboard } from "lucide-react"
-import { saveLink } from './actions'
+import { saveLink, createCollection } from './actions'
 import { useToast } from "@/hooks/use-toast"
 
-export default function LinkCollector() {
-  const [collectors, setCollectors] = useState(['Work', 'Personal', 'Shopping'])
-  const [selectedCollector, setSelectedCollector] = useState('')
+interface Collection {
+  name: string
+  items: { url: string }[]
+}
+
+export default function LinkCollection() {
+  const [collections, setCollections] = useState<string[]>([])
+  const [selectedCollection, setSelectedCollection] = useState('')
   const [link, setLink] = useState('')
-  const [isNewCollectorModalOpen, setIsNewCollectorModalOpen] = useState(false)
-  const [newCollectorName, setNewCollectorName] = useState('')
+  const [isNewCollectionModalOpen, setIsNewCollectionModalOpen] = useState(false)
+  const [newCollectionName, setNewCollectionName] = useState('')
   const [isPasteSupported, setIsPasteSupported] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
@@ -30,14 +35,29 @@ export default function LinkCollector() {
 
   useEffect(() => {
     setIsPasteSupported(navigator.clipboard && typeof navigator.clipboard.readText === 'function')
+
+    async function loadCollections() {
+      const response = await fetch('/api/collections')
+      const data: Collection[] = await response.json()
+      setCollections(data.map((c: Collection) => c.name))
+    }
+    loadCollections()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedCollector || !link) {
+    if (!selectedCollection) {
       toast({
         title: "Error",
-        description: "Please select a collector and enter a link.",
+        description: "Please select a collection.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!link) {
+      toast({
+        title: "Error",
+        description: "Please enter a link.",
         variant: "destructive",
       })
       return
@@ -45,9 +65,9 @@ export default function LinkCollector() {
 
     setIsSubmitting(true)
     try {
-      await saveLink(selectedCollector, link)
+      await saveLink(selectedCollection, link)
       setLink('')
-      setSelectedCollector('')
+      setSelectedCollection('')
       toast({
         title: "Success",
         description: "Link saved successfully!",
@@ -65,12 +85,25 @@ export default function LinkCollector() {
     }
   }
 
-  const handleNewCollector = () => {
-    if (newCollectorName) {
-      setCollectors([...collectors, newCollectorName])
-      setSelectedCollector(newCollectorName)
-      setNewCollectorName('')
-      setIsNewCollectorModalOpen(false)
+  const handleNewCollection = async () => {
+    if (newCollectionName) {
+      try {
+        await createCollection(newCollectionName)
+        setCollections([...collections, newCollectionName])
+        setSelectedCollection(newCollectionName)
+        setNewCollectionName('')
+        setIsNewCollectionModalOpen(false)
+        toast({
+          title: "Success",
+          description: "Collection created successfully!",
+        })
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to create collection.",
+          variant: "destructive",
+        })
+      }
     }
   }
 
@@ -91,24 +124,24 @@ export default function LinkCollector() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-md bg-background rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold mb-6 text-center">Save Link to Collector</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center">Save Link to Collection</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="collector">Choose Collector</Label>
+            <Label htmlFor="collection">Choose Collection</Label>
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-              <Select value={selectedCollector} onValueChange={setSelectedCollector}>
-                <SelectTrigger id="collector" className="flex-grow">
-                  <SelectValue placeholder="Select a collector" />
+              <Select value={selectedCollection} onValueChange={setSelectedCollection}>
+                <SelectTrigger id="collection" className="flex-grow">
+                  <SelectValue placeholder="Select a collection" />
                 </SelectTrigger>
                 <SelectContent>
-                  {collectors.map((collector) => (
-                    <SelectItem key={collector} value={collector}>
-                      {collector}
+                  {collections.map((collection) => (
+                    <SelectItem key={collection} value={collection}>
+                      {collection}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" onClick={() => setIsNewCollectorModalOpen(true)} className="w-full sm:w-auto">
+              <Button type="button" onClick={() => setIsNewCollectionModalOpen(true)} className="w-full sm:w-auto">
                 New
               </Button>
             </div>
@@ -144,22 +177,22 @@ export default function LinkCollector() {
         </form>
       </div>
 
-      {isNewCollectorModalOpen && (
+      {isNewCollectionModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-background p-6 rounded-lg w-full max-w-sm">
-            <h2 className="text-xl font-bold mb-4">Create New Collector</h2>
+            <h2 className="text-xl font-bold mb-4">Create New Collection</h2>
             <Input
               type="text"
-              placeholder="New collector name"
-              value={newCollectorName}
-              onChange={(e) => setNewCollectorName(e.target.value)}
+              placeholder="New collection name"
+              value={newCollectionName}
+              onChange={(e) => setNewCollectionName(e.target.value)}
               className="mb-4"
             />
             <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
-              <Button onClick={() => setIsNewCollectorModalOpen(false)} variant="outline" className="w-full sm:w-auto">
+              <Button onClick={() => setIsNewCollectionModalOpen(false)} variant="outline" className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button onClick={handleNewCollector} className="w-full sm:w-auto">Create</Button>
+              <Button onClick={handleNewCollection} className="w-full sm:w-auto">Create</Button>
             </div>
           </div>
         </div>
