@@ -1,13 +1,33 @@
 'use server'
 
 export async function saveLink(collector: string, link: string) {
-  // Here you would typically save the link to your database
-  // For this example, we'll just log the data
-  console.log(`Saving link "${link}" to collector "${collector}"`)
+  try {
+    const response = await fetch(`/api/collections/${collector}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: link })
+    })
 
-  // Simulate a delay
-  await new Promise(resolve => setTimeout(resolve, 1000))
+    if (!response.ok) throw new Error('Failed to save link')
+    return { success: true, message: 'Link saved successfully' }
+  } catch (error) {
+    console.error('Error saving link:', error)
+    throw error
+  }
+}
 
-  // Return a success message
-  return { success: true, message: 'Link saved successfully' }
+export async function createCollection(name: string) {
+  try {
+    const response = await fetch('/api/collections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    })
+
+    if (!response.ok) throw new Error('Failed to create collection')
+    return { success: true, message: 'Collection created successfully' }
+  } catch (error) {
+    console.error('Error creating collection:', error)
+    throw error
+  }
 }
